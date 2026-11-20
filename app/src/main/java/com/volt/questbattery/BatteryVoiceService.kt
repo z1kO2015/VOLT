@@ -37,9 +37,11 @@ class BatteryVoiceService : Service() {
         const val ACTION_BATTERY_UPDATED = "com.volt.questbattery.BATTERY_UPDATED"
         const val EXTRA_PERCENT = "extra_percent"
         const val EXTRA_STATUS = "extra_status"
+        const val OVERLAY_DURATION_MS = 3000L
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val overlayHandler = Handler(Looper.getMainLooper())
     private var speechRecognizer: SpeechRecognizer? = null
     private var isRunning = false
 
@@ -81,68 +83,71 @@ class BatteryVoiceService : Service() {
             return
         }
 
-        mainHandler.removeCallbacks(hideOverlayRunnable)
+        overlayHandler.post {
+            overlayHandler.removeCallbacks(hideOverlayRunnable)
 
-        val wm = windowManager ?: return
-        val existing = overlayView
+            val wm = windowManager ?: return@post
+            val existing = overlayView
 
-        if (existing != null) {
-            existing.text = text
-            mainHandler.postDelayed(hideOverlayRunnable, 4000L)
-            return
-        }
+            if (existing != null) {
+                existing.text = text
+                overlayHandler.postDelayed(hideOverlayRunnable, OVERLAY_DURATION_MS)
+                return@post
+            }
 
-        val density = resources.displayMetrics.density
-        val padH = (18 * density).toInt()
-        val padV = (10 * density).toInt()
-        val radius = (16 * density).toInt()
+            val density = resources.displayMetrics.density
+            val padH = (18 * density).toInt()
+            val padV = (10 * density).toInt()
+            val radius = (16 * density).toInt()
 
-        val bg = GradientDrawable().apply {
-            setColor(Color.parseColor("#E614141C"))
-            cornerRadius = radius.toFloat()
-            setStroke((1.5f * density).toInt(), Color.parseColor("#9B5DE5"))
-        }
+            val bg = GradientDrawable().apply {
+                setColor(Color.parseColor("#E614141C"))
+                cornerRadius = radius.toFloat()
+                setStroke((1.5f * density).toInt(), Color.parseColor("#9B5DE5"))
+            }
 
-        val tv = TextView(this).apply {
-            this.text = text
-            setTextColor(Color.WHITE)
-            textSize = 20f
-            setPadding(padH, padV, padH, padV)
-            background = bg
-            gravity = Gravity.CENTER
-            elevation = 12f
-        }
+            val tv = TextView(this).apply {
+                this.text = text
+                setTextColor(Color.WHITE)
+                textSize = 20f
+                setPadding(padH, padV, padH, padV)
+                background = bg
+                gravity = Gravity.CENTER
+                elevation = 12f
+            }
 
-        val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
+            val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                @Suppress("DEPRECATION")
+                WindowManager.LayoutParams.TYPE_PHONE
+            }
 
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = (90 * density).toInt()
-        }
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                layoutType,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+                y = (90 * density).toInt()
+            }
 
-        try {
-            wm.addView(tv, params)
-            overlayView = tv
-            mainHandler.postDelayed(hideOverlayRunnable, 4000L)
-        } catch (_: Exception) {
-            notifyActivity(status = "Не удалось показать окно поверх экрана")
+            try {
+                wm.addView(tv, params)
+                overlayView = tv
+                overlayHandler.postDelayed(hideOverlayRunnable, OVERLAY_DURATION_MS)
+            } catch (_: Exception) {
+                notifyActivity(status = "Не удалось показать окно поверх экрана")
+            }
         }
     }
 
     private fun removeOverlay() {
+        overlayHandler.removeCallbacks(hideOverlayRunnable)
         val view: View = overlayView ?: return
         try {
             windowManager?.removeView(view)
@@ -223,7 +228,6 @@ class BatteryVoiceService : Service() {
     }
 
     private fun scheduleRestart(delayMs: Long) {
-        mainHandler.removeCallbacks(hideOverlayRunnable)
         mainHandler.removeCallbacksAndMessages(null)
         if (!isRunning) return
         mainHandler.postDelayed({ startListeningLoop() }, delayMs)
@@ -280,6 +284,7 @@ class BatteryVoiceService : Service() {
         isRunning = false
         mainHandler.removeCallbacksAndMessages(null)
         removeOverlay()
+        overlayHandler.removeCallbacksAndMessages(null)
         speechRecognizer?.destroy()
         speechRecognizer = null
         super.onDestroy()
