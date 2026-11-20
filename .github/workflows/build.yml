@@ -19,20 +19,35 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      - name: Generate Gradle 8.9 wrapper
+      - name: Configure Gradle 8.9 wrapper
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O gradle.zip
-          unzip -q gradle.zip
-          ./gradle-8.9/bin/gradle wrapper --gradle-version 8.9 --distribution-type bin
+          mkdir -p gradle/wrapper
+          cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+          cat << 'EOF' > gradlew
+          #!/usr/bin/env sh
+          exec gradle "$@"
+          EOF
           chmod +x gradlew
-          rm -rf gradle-8.9 gradle.zip
+          wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O gradle-8.9.zip
+          unzip -oq gradle-8.9.zip -d /opt/gradle
+          ln -sf /opt/gradle/gradle-8.9/bin/gradle /usr/local/bin/gradle
+          rm -f gradle-8.9.zip
+          rm -rf "$HOME/.gradle/wrapper/dists/gradle-8.9-bin"
 
       - name: Accept Android SDK licenses
         run: |
-          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          mkdir -p "$SDK_ROOT/licenses"
+          yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" --licenses 2>/dev/null || true
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
