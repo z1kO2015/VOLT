@@ -34,10 +34,10 @@ jobs:
           exec gradle "$@"
           EOF
           chmod +x gradlew
-          wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O gradle-8.9.zip
-          unzip -oq gradle-8.9.zip -d /opt/gradle
+          wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O gradle.zip
+          unzip -oq gradle.zip -d /opt/gradle
           ln -sf /opt/gradle/gradle-8.9/bin/gradle /usr/local/bin/gradle
-          rm -f gradle-8.9.zip
+          rm -f gradle.zip
           rm -rf "$HOME/.gradle/wrapper/dists/gradle-8.9-bin"
 
       - name: Accept Android SDK licenses
@@ -47,7 +47,7 @@ jobs:
           yes | "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$SDK_ROOT" --licenses 2>/dev/null || true
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
