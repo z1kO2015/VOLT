@@ -19,13 +19,13 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      - name: Generate Gradle 8.4 wrapper
+      - name: Generate Gradle 8.9 wrapper
         run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O gradle.zip
+          wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip -O gradle.zip
           unzip -q gradle.zip
-          ./gradle-8.4/bin/gradle wrapper --gradle-version 8.4 --distribution-type bin
+          ./gradle-8.9/bin/gradle wrapper --gradle-version 8.9 --distribution-type bin
           chmod +x gradlew
-          rm -rf gradle-8.4 gradle.zip
+          rm -rf gradle-8.9 gradle.zip
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
