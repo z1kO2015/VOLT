@@ -19,8 +19,12 @@ jobs:
           java-version: "17"
           distribution: "temurin"
 
-      - name: Configure Gradle 8.9 wrapper
+      - name: Configure Gradle 8.9 wrapper and properties
         run: |
+          cat << 'EOF' > gradle.properties
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          EOF
           mkdir -p gradle/wrapper
           cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
           distributionBase=GRADLE_USER_HOME
